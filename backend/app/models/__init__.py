@@ -1,4 +1,5 @@
 from app.models.entities import (
+    CalendarEventRecord,
     Conversation,
     Document,
     DocumentChunk,
@@ -10,6 +11,7 @@ from app.models.entities import (
 )
 
 __all__ = [
+    "CalendarEventRecord",
     "Conversation",
     "Document",
     "DocumentChunk",

@@ -4,7 +4,12 @@ from app.services.embeddings import (
     LocalEmbeddingService,
     get_embedding_service,
 )
-from app.services.llm import GeminiLLMService
+from app.services.llm import (
+    BASELINE_SYSTEM_PROMPT,
+    RAG_SYSTEM_PROMPT,
+    GeminiLLMService,
+    OllamaLLMService,
+)
 
 
 class FakeResponse:
@@ -29,6 +34,33 @@ def test_gemini_generation_uses_configured_model_and_key(monkeypatch):
     assert settings.llm_model in captured["url"]
     assert captured["headers"]["x-goog-api-key"] == "test-key"
     assert captured["json"]["generationConfig"]["temperature"] == 0
+    assert captured["json"]["systemInstruction"]["parts"][0]["text"] == RAG_SYSTEM_PROMPT
+    GeminiLLMService(settings).baseline("General question?")
+    assert captured["json"]["systemInstruction"]["parts"][0]["text"] == BASELINE_SYSTEM_PROMPT
+
+
+def test_ollama_generation_uses_configured_gemma_model(monkeypatch):
+    captured = {}
+
+    class OllamaResponse(FakeResponse):
+        def json(self) -> dict:
+            return {"message": {"content": "Grounded Ollama answer [1]."}}
+
+    def fake_post(url, **kwargs):
+        captured.update(url=url, **kwargs)
+        return OllamaResponse()
+
+    monkeypatch.setattr("app.services.llm.httpx.post", fake_post)
+    settings = Settings(
+        llm_provider="ollama",
+        llm_model="gemma4:e2b",
+        ollama_base_url="http://ollama:11434",
+    )
+    answer = OllamaLLMService(settings).answer("Question?", "Evidence [1].")
+    assert answer == "Grounded Ollama answer [1]."
+    assert captured["url"] == "http://ollama:11434/api/chat"
+    assert captured["json"]["model"] == "gemma4:e2b"
+    assert captured["json"]["stream"] is False
 
 
 def test_lightweight_embedding_provider_is_selected(monkeypatch):

@@ -1,12 +1,12 @@
 [
-  {"category":"direct","question":"What is the minimum attendance requirement?"},
-  {"category":"direct","question":"What are the examination guidelines?"},
-  {"category":"direct","question":"How is internal assessment calculated?"},
+  {"category":"direct","question":"What is the minimum attendance requirement?","expected_contains":"85 percent"},
+  {"category":"direct","question":"What are the examination guidelines?","expected_contains":"identity card"},
+  {"category":"direct","question":"How is internal assessment calculated?","expected_contains":"assignment"},
   {"category":"direct","question":"What is the late registration rule?"},
   {"category":"direct","question":"When are semester examinations held?"},
-  {"category":"rag","question":"What subjects are present in semester 4?"},
+  {"category":"rag","question":"What subjects are present in semester 4?","expected_contains":"Database Management Systems"},
   {"category":"rag","question":"Summarize the DBMS syllabus."},
-  {"category":"rag","question":"Which courses have practical examinations?"},
+  {"category":"rag","question":"Which courses have practical examinations?","expected_contains":"laboratory practical"},
   {"category":"rag","question":"What are the prerequisites for the final project?"},
   {"category":"rag","question":"Explain the credit requirements for graduation."},
   {"category":"unknown","question":"What will the cafeteria serve next Tuesday?"},
@@ -15,7 +15,7 @@
   {"category":"follow_up","question":"What happens if I do not meet the attendance requirement?","history":[{"role":"user","content":"What is the attendance requirement?"}]},
   {"category":"follow_up","question":"Which of those has a lab?","history":[{"role":"user","content":"What subjects are in semester 4?"}]},
   {"category":"follow_up","question":"When is it due?","history":[{"role":"user","content":"Explain the final project requirements."}]},
-  {"category":"multi_step","question":"Find the semester 4 subjects and identify the practical courses."},
+  {"category":"multi_step","question":"Find the semester 4 subjects and identify the practical courses.","expected_contains":"laboratory practical"},
   {"category":"multi_step","question":"Compare attendance and examination eligibility rules."},
   {"category":"multi_step","question":"Summarize the project requirements and list their deadlines."}
 ]

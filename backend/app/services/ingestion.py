@@ -40,11 +40,14 @@ def load_document(path: Path) -> list[PageText]:
         raise ValueError(f"Unsupported document type: {suffix}")
     if suffix == ".txt":
         return [PageText(None, clean_text(path.read_text(encoding="utf-8", errors="replace")))]
-    reader = PdfReader(str(path))
-    pages = [
-        PageText(index, clean_text(page.extract_text() or ""))
-        for index, page in enumerate(reader.pages, 1)
-    ]
+    try:
+        reader = PdfReader(str(path))
+        pages = [
+            PageText(index, clean_text(page.extract_text() or ""))
+            for index, page in enumerate(reader.pages, 1)
+        ]
+    except Exception as exc:
+        raise ValueError("The PDF could not be parsed") from exc
     # Remove repeated short first/last lines when they occur on most pages.
     candidates: dict[str, int] = {}
     for page in pages:
@@ -109,18 +112,6 @@ class IngestionService:
         metadata = metadata or {}
         raw = path.read_bytes()
         content_hash = hashlib.sha256(raw).hexdigest()
-        existing = self.db.scalar(select(Document).where(Document.content_hash == content_hash))
-        if existing:
-            stored_model = (
-                existing.chunks[0].metadata_.get("embedding_model") if existing.chunks else None
-            )
-            if stored_model == self.embeddings.model_name:
-                return existing, False
-            # A model switch changes the vector space. Rebuild this document instead of
-            # mixing incompatible embeddings or silently treating it as a duplicate.
-            self.db.delete(existing)
-            self.db.flush()
-        document_id = content_hash[:32]
         pages = load_document(path)
         chunks = chunk_pages(
             pages,
@@ -128,35 +119,80 @@ class IngestionService:
             self.settings.chunk_overlap_tokens,
             metadata.get("section"),
         )
+        if not chunks or not any(chunk.content.strip() for chunk in chunks):
+            raise ValueError("The document contains no searchable text. Scanned PDFs require OCR.")
+        existing = self.db.scalar(select(Document).where(Document.content_hash == content_hash))
+        title = metadata.get("title") or path.stem.replace("-", " ").title()
+        source = metadata.get("source") or str(path)
+        if existing:
+            stored_model = (
+                existing.chunks[0].metadata_.get("embedding_model") if existing.chunks else None
+            )
+            if stored_model == self.embeddings.model_name:
+                changed = any(
+                    getattr(existing, field) != value
+                    for field, value in {
+                        "title": title,
+                        "category": metadata.get("category"),
+                        "department": metadata.get("department"),
+                        "academic_year": metadata.get("academic_year"),
+                        "source": source,
+                    }.items()
+                )
+                if changed:
+                    existing.title = title
+                    existing.category = metadata.get("category")
+                    existing.department = metadata.get("department")
+                    existing.academic_year = metadata.get("academic_year")
+                    existing.source = source
+                    for chunk in existing.chunks:
+                        chunk.metadata_ = {
+                            **chunk.metadata_,
+                            **metadata,
+                            "title": title,
+                            "source": source,
+                        }
+                    self.db.commit()
+                    self.db.refresh(existing)
+                return existing, False
+            self.db.delete(existing)
+            self.db.flush()
         vectors = self.embeddings.embed_documents([chunk.content for chunk in chunks])
         document = Document(
-            id=document_id,
-            title=metadata.get("title") or path.stem.replace("-", " ").title(),
+            id=content_hash[:32],
+            title=title,
             category=metadata.get("category"),
             department=metadata.get("department"),
             academic_year=metadata.get("academic_year"),
-            source=str(path),
+            source=source,
             content_hash=content_hash,
+            status="processing",
         )
-        self.db.add(document)
-        self.db.flush()
-        for index, (chunk, vector) in enumerate(zip(chunks, vectors)):
-            self.db.add(
-                DocumentChunk(
-                    document_id=document.id,
-                    chunk_index=index,
-                    content=chunk.content,
-                    page_number=chunk.page_number,
-                    section=chunk.section,
-                    metadata_={
-                        "document_id": document.id,
-                        "title": document.title,
-                        "embedding_model": self.embeddings.model_name,
-                        **metadata,
-                    },
-                    embedding=vector,
+        try:
+            self.db.add(document)
+            self.db.flush()
+            for index, (chunk, vector) in enumerate(zip(chunks, vectors)):
+                self.db.add(
+                    DocumentChunk(
+                        document_id=document.id,
+                        chunk_index=index,
+                        content=chunk.content,
+                        page_number=chunk.page_number,
+                        section=chunk.section,
+                        metadata_={
+                            "document_id": document.id,
+                            "title": document.title,
+                            "source": source,
+                            "embedding_model": self.embeddings.model_name,
+                            **metadata,
+                        },
+                        embedding=vector,
+                    )
                 )
-            )
-        self.db.commit()
-        self.db.refresh(document)
-        return document, True
+            document.status = "ready"
+            self.db.commit()
+            self.db.refresh(document)
+            return document, True
+        except Exception:
+            self.db.rollback()
+            raise

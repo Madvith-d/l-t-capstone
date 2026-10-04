@@ -1,93 +1,79 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import delete, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
+from app.api.dependencies import get_user_id
 from app.db.session import get_db
-from app.models import StudyPlan, StudySession
-from app.planner.engine import PlanValidationError, generate_sessions, validate_sessions
-from app.planner.modification import modify_sessions
+from app.planner.engine import PlanValidationError
 from app.schemas.api import PlanCreate, PlanOut, PlanPatch
+from app.services.plans import create_plan as create_plan_service
+from app.services.plans import list_plans, load_plan, modify_plan
 
 router = APIRouter(prefix="/api/plans", tags=["plans"])
 
 
-def load_plan(db: Session, plan_id: str) -> StudyPlan:
-    plan = db.scalar(
-        select(StudyPlan).where(StudyPlan.id == plan_id).options(selectinload(StudyPlan.sessions))
-    )
+def require_plan(db: Session, user_id: str, plan_id: str):
+    plan = load_plan(db, user_id, plan_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Study plan not found")
     return plan
 
 
+@router.get("", response_model=list[PlanOut])
+def get_plans(
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    return list_plans(db, user_id)
+
+
 @router.post("", response_model=PlanOut, status_code=201)
-def create_plan(payload: PlanCreate, db: Session = Depends(get_db)):
+def create_plan(
+    payload: PlanCreate,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    if payload.user_id and payload.user_id != user_id:
+        raise HTTPException(status_code=403, detail="User identity does not match the request")
     try:
-        generated = generate_sessions(payload)
-        errors = validate_sessions(
-            generated,
-            [item.model_dump() for item in payload.subjects],
-            payload.exam_date,
-            payload.available_hours_per_day,
-        )
-        if errors:
-            raise PlanValidationError(errors)
+        plan = create_plan_service(db, user_id, payload)
+        db.commit()
+        return require_plan(db, user_id, plan.id)
     except PlanValidationError as exc:
+        db.rollback()
         raise HTTPException(
-            status_code=422, detail={"message": "Study plan is invalid", "errors": exc.errors}
+            status_code=422,
+            detail={"code": "invalid_plan", "message": "Study plan is invalid", "errors": exc.errors},
         ) from exc
-    plan = StudyPlan(
-        user_id=payload.user_id,
-        title=payload.title,
-        exam_date=payload.exam_date,
-        available_hours_per_day=payload.available_hours_per_day,
-        subjects=[item.model_dump() for item in payload.subjects],
-        constraints={"preferred_times": payload.preferred_times},
-    )
-    db.add(plan)
-    db.flush()
-    for item in generated:
-        db.add(StudySession(plan_id=plan.id, **item))
-    db.commit()
-    return load_plan(db, plan.id)
 
 
 @router.get("/{plan_id}", response_model=PlanOut)
-def get_plan(plan_id: str, db: Session = Depends(get_db)):
-    return load_plan(db, plan_id)
+def get_plan(
+    plan_id: str,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    return require_plan(db, user_id, plan_id)
 
 
 @router.patch("/{plan_id}", response_model=PlanOut)
-def patch_plan(plan_id: str, payload: PlanPatch, db: Session = Depends(get_db)):
-    plan = load_plan(db, plan_id)
-    existing = [
-        {
-            "session_date": item.session_date,
-            "subject": item.subject,
-            "topic": item.topic,
-            "duration_minutes": item.duration_minutes,
-            "preferred_time": item.preferred_time,
-            "status": item.status,
-        }
-        for item in plan.sessions
-    ]
+def patch_plan(
+    plan_id: str,
+    payload: PlanPatch,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    plan = require_plan(db, user_id, plan_id)
     try:
-        updated = modify_sessions(
-            existing,
-            payload.instruction,
-            plan.subjects,
-            plan.exam_date,
-            plan.available_hours_per_day,
-        )
+        updated = modify_plan(db, user_id, plan, payload.instruction)
+        db.commit()
+        return require_plan(db, user_id, updated.id)
     except PlanValidationError as exc:
+        db.rollback()
         raise HTTPException(
             status_code=422,
-            detail={"message": "Plan modification is invalid", "errors": exc.errors},
+            detail={
+                "code": "invalid_plan_modification",
+                "message": "Plan modification is invalid",
+                "errors": exc.errors,
+            },
         ) from exc
-    db.execute(delete(StudySession).where(StudySession.plan_id == plan.id))
-    for item in updated:
-        db.add(StudySession(plan_id=plan.id, **item))
-    plan.version += 1
-    plan.constraints = {**plan.constraints, "last_instruction": payload.instruction}
-    db.commit()
-    return load_plan(db, plan.id)

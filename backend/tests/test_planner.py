@@ -31,6 +31,22 @@ def test_generated_plan_is_valid_and_covers_subjects():
     assert {item["subject"] for item in sessions} == {"DBMS", "OS"}
 
 
+def test_move_subject_defaults_to_one_session_not_all():
+    payload = request()
+    sessions = generate_sessions(payload)
+    original_dbms_dates = [item["session_date"] for item in sessions if item["subject"] == "DBMS"]
+    updated = modify_sessions(
+        sessions,
+        "Move DBMS revision to Monday",
+        [item.model_dump() for item in payload.subjects],
+        payload.exam_date,
+        payload.available_hours_per_day,
+    )
+    updated_dbms_dates = [item["session_date"] for item in updated if item["subject"] == "DBMS"]
+    assert sum(before != after for before, after in zip(sorted(original_dbms_dates), sorted(updated_dbms_dates))) <= 2
+    assert len(set(updated_dbms_dates)) > 1
+
+
 def test_remove_saturday_preserves_other_sessions():
     payload = request()
     sessions = generate_sessions(payload)

@@ -10,6 +10,8 @@ class Intent(str, Enum):
     STUDY_PLAN = "STUDY_PLAN"
     STUDY_PLAN_MODIFICATION = "STUDY_PLAN_MODIFICATION"
     CALCULATION = "CALCULATION"
+    CALENDAR_ACTION = "CALENDAR_ACTION"
+    MULTI_STEP = "MULTI_STEP"
     GENERAL_CONVERSATION = "GENERAL_CONVERSATION"
     UNKNOWN = "UNKNOWN"
 
@@ -30,6 +32,8 @@ class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=4000)
     conversation_id: str | None = None
     user_id: str | None = None
+    plan_id: str | None = None
+    plan_request: dict | None = None
     filters: dict[str, str] = Field(default_factory=dict)
 
 
@@ -55,6 +59,15 @@ class MessageOut(BaseModel):
 class ConversationCreate(BaseModel):
     user_id: str | None = None
     title: str = Field("New conversation", min_length=1, max_length=255)
+
+
+class ConversationSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    title: str
+    summary: str | None
+    created_at: datetime
+    updated_at: datetime
 
 
 class ConversationOut(BaseModel):

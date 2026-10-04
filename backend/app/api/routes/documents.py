@@ -32,6 +32,10 @@ async def ingest_document(
     if suffix not in SUPPORTED_EXTENSIONS:
         raise HTTPException(status_code=415, detail="Only PDF and TXT documents are supported")
     content = await file.read()
+    if not content:
+        raise HTTPException(status_code=422, detail="The uploaded document is empty")
+    if suffix == ".pdf" and not content.startswith(b"%PDF-"):
+        raise HTTPException(status_code=415, detail="The file is not a valid PDF")
     if len(content) > get_settings().max_upload_mb * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Document exceeds the configured upload limit")
     with NamedTemporaryFile(suffix=suffix, delete=False) as temporary:

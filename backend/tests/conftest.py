@@ -1,7 +1,8 @@
 import os
 
 os.environ["DATABASE_URL"] = "sqlite://"
-os.environ["RETRIEVAL_SCORE_THRESHOLD"] = "0"
+os.environ["RETRIEVAL_SCORE_THRESHOLD"] = "0.1"
+os.environ["RETRIEVAL_MIN_TERM_COVERAGE"] = "0.15"
 os.environ["LLM_PROVIDER"] = "local"
 os.environ["EMBEDDING_PROVIDER"] = "local"
 
@@ -35,6 +36,10 @@ def db():
 @pytest.fixture
 def client(db):
     app.dependency_overrides[get_db] = lambda: db
-    with TestClient(app, raise_server_exceptions=True) as test_client:
+    with TestClient(
+        app,
+        raise_server_exceptions=True,
+        headers={"X-User-ID": "test-user-0001"},
+    ) as test_client:
         yield test_client
     app.dependency_overrides.clear()

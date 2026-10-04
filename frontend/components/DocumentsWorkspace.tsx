@@ -19,7 +19,12 @@ export function DocumentsWorkspace() {
     }
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    api.documents()
+      .then(setDocuments)
+      .catch((reason) => setError(reason instanceof Error ? reason.message : "Documents could not be loaded."))
+      .finally(() => setLoading(false));
+  }, []);
 
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,7 +56,7 @@ export function DocumentsWorkspace() {
       <button className="primary" disabled={uploading}>{uploading ? <><LoaderCircle className="spinner" /> Ingesting…</> : <><Upload size={17} /> Add document</>}</button>
     </form>
     {loading && <div className="thinking"><LoaderCircle className="spinner" /> Loading documents…</div>}
-    {error && <p className="form-error" role="alert">{error} Check the backend connection and retry.</p>}
+    {error && <p className="form-error" role="alert">{error}</p>}
     {!loading && !error && documents.length === 0 && <div className="empty-state">
       <FileText /><h2>No documents ingested</h2>
       <p>Upload an approved PDF or TXT file. Its text will be cleaned, chunked, embedded, and stored for retrieval.</p>

@@ -17,8 +17,10 @@ def test_academic_workflow_has_real_retrieval_generation_and_review_nodes(client
     )
     assert body["graph_route"] == [
         "analyze_query",
+        "rewrite_query",
         "retrieve_information",
-        "generate_response",
+        "check_evidence",
+        "unknown_response",
         "review_response",
         "finalize_response",
     ]
@@ -31,6 +33,7 @@ def test_calculator_is_registered_as_a_langchain_tool(client):
     response = client.post("/api/chat", json={"question": "What is 25% of 80?"})
     assert response.json()["graph_route"] == [
         "analyze_query",
+        "select_tool",
         "execute_tool",
         "review_response",
         "finalize_response",

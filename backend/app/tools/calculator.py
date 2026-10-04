@@ -37,9 +37,20 @@ def _evaluate(node: ast.AST) -> float:
 
 def normalize_expression(text: str) -> str:
     value = text.lower().replace(",", "")
-    match = re.search(r"(-?\d+(?:\.\d+)?)\s*%\s*of\s*(-?\d+(?:\.\d+)?)", value)
-    if match:
-        return f"({match.group(1)}/100)*{match.group(2)}"
+    number = r"(-?\d+(?:\.\d+)?)"
+    patterns = (
+        (rf"{number}\s*%\s*of\s*{number}", lambda a, b: f"({a}/100)*{b}"),
+        (rf"{number}\s*(?:times|multiplied by)\s*{number}", lambda a, b: f"{a}*{b}"),
+        (rf"(?:add|sum)\s+{number}\s+(?:and|to)\s+{number}", lambda a, b: f"{a}+{b}"),
+        (rf"{number}\s+(?:plus)\s+{number}", lambda a, b: f"{a}+{b}"),
+        (rf"{number}\s+(?:minus)\s+{number}", lambda a, b: f"{a}-{b}"),
+        (rf"{number}\s+(?:divided by|divide by)\s+{number}", lambda a, b: f"{a}/{b}"),
+        (rf"(?:divide)\s+{number}\s+by\s+{number}", lambda a, b: f"{a}/{b}"),
+    )
+    for pattern, render in patterns:
+        match = re.search(pattern, value)
+        if match:
+            return render(match.group(1), match.group(2))
     value = re.sub(r"[^0-9+\-*/().% ]", " ", value)
     return value.strip()
 

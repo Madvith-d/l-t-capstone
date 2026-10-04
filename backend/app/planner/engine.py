@@ -60,7 +60,8 @@ def validate_sessions(
 ) -> list[str]:
     errors: list[str] = []
     totals: dict[date, int] = defaultdict(int)
-    covered = set()
+    covered_subjects: set[str] = set()
+    covered_topics: set[tuple[str, str]] = set()
     for session in sessions:
         session_date = session["session_date"]
         duration = session["duration_minutes"]
@@ -69,11 +70,19 @@ def validate_sessions(
         if session_date >= exam_date:
             errors.append(f"{session['subject']} has a session on or after the exam date")
         totals[session_date] += duration
-        covered.add(session["subject"])
+        covered_subjects.add(session["subject"])
+        covered_topics.add((session["subject"], session["topic"]))
     for day, total in totals.items():
         if total > available_hours_per_day * 60:
             errors.append(f"{day.isoformat()} exceeds the daily time limit")
     required = {item["name"] if isinstance(item, dict) else item.name for item in subjects}
-    for missing in sorted(required - covered):
+    for missing in sorted(required - covered_subjects):
         errors.append(f"Missing required subject: {missing}")
+    required_topics = {
+        (item["name"], topic) if isinstance(item, dict) else (item.name, topic)
+        for item in subjects
+        for topic in (item["topics"] if isinstance(item, dict) else item.topics)
+    }
+    for subject, topic in sorted(required_topics - covered_topics):
+        errors.append(f"Missing required topic: {subject} / {topic}")
     return errors

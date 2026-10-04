@@ -2,6 +2,7 @@ import hashlib
 import math
 import re
 from collections.abc import Iterable
+from functools import lru_cache
 
 from app.core.config import Settings, get_settings
 
@@ -45,11 +46,13 @@ class LocalEmbeddingService(EmbeddingService):
 
 
 class FastEmbedEmbeddingService(EmbeddingService):
-    """Small CPU-only ONNX embeddings; the model is downloaded once into the cache."""
+    """CPU-only ONNX embeddings; the configured model is downloaded once into the cache."""
 
     def __init__(self, settings: Settings):
         if settings.embedding_dimension != 384:
-            raise EmbeddingError("all-MiniLM-L6-v2 requires EMBEDDING_DIMENSION=384")
+            raise EmbeddingError(
+                f"{settings.embedding_model} is configured for EMBEDDING_DIMENSION=384"
+            )
         try:
             from fastembed import TextEmbedding
         except ImportError as exc:  # pragma: no cover - dependency guard
@@ -83,8 +86,23 @@ class FastEmbedEmbeddingService(EmbeddingService):
             raise EmbeddingError("Local query embedding failed") from exc
 
 
+@lru_cache(maxsize=4)
+def _cached_fastembed(model: str, dimensions: int, cache_dir: str) -> EmbeddingService:
+    settings = Settings(
+        embedding_provider="fastembed",
+        embedding_model=model,
+        embedding_dimension=dimensions,
+        embedding_cache_dir=cache_dir,
+    )
+    return FastEmbedEmbeddingService(settings)
+
+
 def get_embedding_service(settings: Settings | None = None) -> EmbeddingService:
     settings = settings or get_settings()
     if settings.embedding_provider == "fastembed":
-        return FastEmbedEmbeddingService(settings)
+        return _cached_fastembed(
+            settings.embedding_model,
+            settings.embedding_dimension,
+            settings.embedding_cache_dir,
+        )
     return LocalEmbeddingService(settings.embedding_dimension)

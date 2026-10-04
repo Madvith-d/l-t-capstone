@@ -1,4 +1,14 @@
 services:
+  # Exposes the host's loopback-only Ollama daemon to Linux containers without
+  # installing Ollama or copying its models into Docker.
+  ollama-bridge:
+    image: alpine/socat:1.8.0.3
+    network_mode: host
+    command:
+      - "TCP-LISTEN:${OLLAMA_BRIDGE_PORT:-11435},fork,reuseaddr"
+      - "TCP:127.0.0.1:11434"
+    restart: unless-stopped
+
   postgres:
     image: pgvector/pgvector:pg16
     environment:
@@ -26,10 +36,17 @@ services:
         required: false
     environment:
       DATABASE_URL: postgresql+psycopg://academic:academic@postgres:5432/academic_assistant
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      LLM_MODEL: ${LLM_MODEL:-gemma4:e2b}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11435}
       EMBEDDING_CACHE_DIR: /models/fastembed
     depends_on:
       postgres:
         condition: service_healthy
+      ollama-bridge:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: on-failure:5
     networks:
       - app_network
@@ -40,6 +57,7 @@ services:
       retries: 10
     volumes:
       - ./data:/app/data
+      - ./evaluation:/app/evaluation
       - embedding_cache:/models/fastembed
     ports:
       - "${BACKEND_PORT:-8000}:8000"
@@ -48,7 +66,8 @@ services:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_REQUEST_TIMEOUT_MS: ${NEXT_PUBLIC_REQUEST_TIMEOUT_MS:-45000}
     depends_on:
       backend:
         condition: service_healthy

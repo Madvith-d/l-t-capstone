@@ -1,10 +1,10 @@
 # Northstar — College Academic Assistant
 
-A production-structured MVP that answers from college documents, keeps conversation context, creates and modifies validated study plans, and executes a restricted calculator through an explicit LangGraph workflow.
+A production-structured MVP that answers from approved college documents, keeps bounded conversation context, creates and modifies validated study plans, and executes restricted calculator/calendar tools through explicit LangGraph workflows.
 
 ## Architecture and stack
 
-Next.js 16 + TypeScript frontend; FastAPI + Pydantic backend; LangChain/LangGraph orchestration; Gemini 2.5 Flash Lite generation; lightweight FastEmbed MiniLM embeddings; SQLAlchemy/Alembic; PostgreSQL 16 + pgvector. Provider-specific LLM and embedding clients are isolated behind interfaces. See [architecture](docs/architecture.md).
+Next.js 16, React, TypeScript, Tailwind CSS; FastAPI, Pydantic, SQLAlchemy, Alembic; LangChain/LangGraph; Ollama `gemma4:e2b` generation with optional Gemini/local providers; FastEmbed BGE embeddings; PostgreSQL 16 with pgvector; Docker Compose. See [architecture](docs/architecture.md).
 
 ## Prerequisites
 
@@ -17,37 +17,64 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open the UI at <http://localhost:3000>, API documentation at <http://localhost:8000/docs>, and health endpoint at <http://localhost:8000/health>.
+Open <http://localhost:3000>, API docs at <http://localhost:8000/docs>, and health at <http://localhost:8000/health>.
+
+A fresh repository intentionally contains no real college policy. To make the development demo useful, ingest the clearly labelled **synthetic, non-official** corpus:
+
+```bash
+docker compose exec backend python -m scripts.ingest \
+  data/demo/DEMO-academic-regulations.txt \
+  data/demo/DEMO-semester-four-syllabus.txt \
+  --category demo --academic-year DEMO
+```
+
+Then ask “What is the attendance requirement?” Real deployments must replace the demo with owner-approved college documents.
 
 ## Configuration
 
-Important variables: `DATABASE_URL`, `GEMINI_API_KEY`, `LLM_PROVIDER`, `LLM_MODEL`, `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `RETRIEVAL_TOP_K`, `RETRIEVAL_SCORE_THRESHOLD`, `CHUNK_SIZE_TOKENS`, and `CHUNK_OVERLAP_TOKENS`. Generation defaults to Gemini 2.5 Flash Lite. Embeddings default to the local 384-dimensional `sentence-transformers/all-MiniLM-L6-v2` model through FastEmbed, so no embedding API key or PyTorch installation is required.
+Important variables include `DATABASE_URL`, `LLM_PROVIDER`, `LLM_MODEL`, `OLLAMA_BASE_URL`, `GEMINI_API_KEY`, `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `RETRIEVAL_TOP_K`, `RETRIEVAL_SCORE_THRESHOLD`, `RETRIEVAL_MIN_TERM_COVERAGE`, `MULTI_STEP_MAX_SUBQUERIES`, and chunk sizes. Fresh development defaults to the existing host Ollama instance using `gemma4:e2b`, so no API credential is required. Before startup, verify `ollama list` contains that exact tag. Compose reaches the host process through a lightweight TCP bridge at `host.docker.internal:11435`; it does not install Ollama or download another model. Set `LLM_PROVIDER=gemini` and a valid key only for optional Gemini generation.
+
+For native backend development, use `OLLAMA_BASE_URL=http://localhost:11434`; Compose uses `http://host.docker.internal:11435`.
+
+The browser creates a stable anonymous UUID and sends it as `X-User-ID`. Conversations, plans, and mock calendar events are scoped to it. This is MVP resource isolation, not full authentication.
 
 ## Documents
 
-Upload approved PDF/TXT files from the **Sources** screen, or place them in `data/raw` and run:
-
-```bash
-docker compose exec backend python -m scripts.ingest data/raw/academic-regulations.pdf --category regulations
-```
-
-Each document is cleaned, split into overlapping chunks, embedded, and stored in pgvector. Content hashes make repeated ingestion idempotent, and PDF chunks retain page numbers and source metadata. See [RAG documentation](docs/rag.md).
+Upload approved PDF/TXT files from **Sources**, or ingest files from `data/raw`. Documents are validated, cleaned, chunked, embedded, and stored in pgvector. Empty/image-only files are rejected and duplicate content updates metadata without duplicating chunks. See [RAG documentation](docs/rag.md).
 
 ## Development and tests
 
-See [setup](docs/setup.md). Typical checks:
-
 ```bash
-cd backend && pytest
-cd frontend && npm run build
+cd backend && pytest -q && ruff check app scripts tests
+cd frontend && npm ci && npm run lint && npm run build
 ```
 
-The API is documented in [docs/api.md](docs/api.md), workflow in [docs/langgraph.md](docs/langgraph.md), and evaluation in [docs/evaluation.md](docs/evaluation.md).
+After changing `EMBEDDING_MODEL`, rebuild existing vectors before asking questions:
+
+```bash
+docker compose exec backend python -m scripts.reembed
+```
+
+Production-like vector smoke test:
+
+```bash
+docker compose exec backend python -m scripts.smoke_pgvector
+```
+
+See [setup](docs/setup.md), [API](docs/api.md), and [LangGraph workflow](docs/langgraph.md).
 
 ## Evaluation
 
-From `backend/`, run `python -m scripts.evaluate` after ingesting representative college documents. The output compares the same dataset against baseline and RAG paths without hard-coded claims.
+From any checkout working directory, or inside the backend container:
+
+```bash
+cd backend && python -m scripts.evaluate
+# or
+docker compose exec backend python -m scripts.evaluate
+```
+
+Baseline and RAG use separate prompts and identical questions. Results and computed summary metrics are written under `evaluation/`; no superiority claim is hard-coded.
 
 ## Scope and safety
 
-The MVP never invents missing college evidence, uses a restricted calculator rather than code execution, validates every plan deterministically, and keeps real calendar integration, auth administration, notifications, OCR, and background workers out of scope. Review [scope.md](scope.md) and [security checklist](docs/security.md).
+Northstar does not invent missing college evidence. It validates citations, uses restricted deterministic tools, validates every plan, and preserves unaffected session IDs/status during modifications. Real calendar credentials, OCR, background workers, and enterprise authentication remain outside MVP scope.

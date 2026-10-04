@@ -130,6 +130,18 @@ class StudyPlan(Base):
     )
 
 
+class CalendarEventRecord(Base):
+    __tablename__ = "calendar_events"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(255))
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    duration_minutes: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class StudySession(Base):
     __tablename__ = "study_sessions"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)

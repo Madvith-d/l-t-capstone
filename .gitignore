@@ -24,6 +24,8 @@ data/processed/*
 !data/processed/.gitkeep
 *.db
 *.sqlite3
+evaluation/results.json
+evaluation/summary.json
 
 # Tool outputs
 .DS_Store

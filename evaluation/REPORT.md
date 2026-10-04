@@ -2,24 +2,36 @@
 
 ## Status
 
-The evaluation harness and 19-question dataset are ready. A scored comparison has not been claimed because no owner-approved college corpus or production LLM credentials were supplied.
+The reproducible 19-question harness covers direct, retrieval, follow-up, unknown, and multi-step questions. Baseline and RAG use separate prompts. The synthetic demo corpus provides expected text for six questions; unknown questions are scored against the required no-evidence response. Questions without an approved expected answer retain nullable correctness rather than receiving invented labels.
 
 ## Reproduction
 
-1. Ingest representative approved documents.
-2. Configure the LLM and embedding providers.
-3. From `backend/`, run `python -m scripts.evaluate`.
-4. Review `evaluation/results.json` and fill the nullable correctness, relevance, and follow-up fields.
-5. Calculate category averages and unsupported-answer rate from the reviewed file.
+```bash
+docker compose up -d --build
+docker compose exec backend python -m scripts.ingest \
+  data/demo/DEMO-academic-regulations.txt \
+  data/demo/DEMO-semester-four-syllabus.txt \
+  --category demo --academic-year DEMO
+docker compose exec backend python -m scripts.evaluate
+```
 
-## Metrics
+Outputs are `evaluation/results.json` and `evaluation/summary.json` (generated files are ignored by Git).
 
-- Correctness: human score against the approved source material.
-- Grounding: whether an answer includes supporting source records.
-- Unsupported-answer rate: answers making unsupported claims divided by all answers.
-- Relevance: human score for responsiveness to the question.
-- Follow-up handling: whether a follow-up is resolved using bounded conversation context.
+## Measured fields
 
-## Results
+- Correctness when `expected_contains` is provided, plus exact safe handling for unknown questions.
+- Grounding: structured sources and a valid citation marker.
+- Unsupported-answer indicator: a non-no-evidence answer without sources.
+- Lexical relevance.
+- Follow-up handling when a follow-up returns grounded evidence.
 
-Pending an approved evaluation corpus. No assertion that either system performs better is made before measurement.
+## Latest verified development run
+
+On 2026-10-04, the local provider against the active development corpus completed all 19 questions and reported:
+
+- measured correctness: `1.0` among questions with an expected result;
+- grounding rate: `0.6842`;
+- unsupported-answer rate: `0.0`;
+- mean lexical relevance: `0.4089`.
+
+This run verifies the harness, not model superiority. Re-run against the owner-approved production corpus and configured provider before reporting production quality.
