@@ -135,6 +135,12 @@ class DocumentOut(BaseModel):
     created_at: datetime
 
 
+class DemoStatus(BaseModel):
+    enabled: bool
+    label: str
+    questions: list[str] = Field(default_factory=list)
+
+
 class IngestMetadata(BaseModel):
     title: str | None = None
     category: str | None = None

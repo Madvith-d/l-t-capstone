@@ -1,5 +1,6 @@
-# Northstar — College Academic Assistant
+# academic-agent — College Academic Assistant
 
+![alt text](image.png)
 A production-structured MVP that answers from approved college documents, keeps bounded conversation context, creates and modifies validated study plans, and executes restricted calculator/calendar tools through explicit LangGraph workflows.
 
 ## Architecture and stack
@@ -29,6 +30,12 @@ docker compose exec backend python -m scripts.ingest \
 ```
 
 Then ask “What is the attendance requirement?” Real deployments must replace the demo with owner-approved college documents.
+
+## Demo mode
+
+Set `DEMO_MODE=true` for a completely deterministic presentation mode. Academic questions use predefined synthetic answers and sources, the Sources view shows only labelled demo documents, uploads are disabled, and the Planner view creates a predefined DBMS/Operating Systems plan for a new browser identity. Calculator, calendar, conversation, and plan-modification flows still execute through their real deterministic graph branches and database persistence.
+
+Set `DEMO_MODE=false` to use uploaded approved documents, BGE retrieval, and Ollama generation. The UI displays a persistent banner whenever demo mode is active.
 
 ## Configuration
 
@@ -77,4 +84,4 @@ Baseline and RAG use separate prompts and identical questions. Results and compu
 
 ## Scope and safety
 
-Northstar does not invent missing college evidence. It validates citations, uses restricted deterministic tools, validates every plan, and preserves unaffected session IDs/status during modifications. Real calendar credentials, OCR, background workers, and enterprise authentication remain outside MVP scope.
+academic-agent does not invent missing college evidence. It validates citations, uses restricted deterministic tools, validates every plan, and preserves unaffected session IDs/status during modifications. Real calendar credentials, OCR, background workers, and enterprise authentication remain outside MVP scope.

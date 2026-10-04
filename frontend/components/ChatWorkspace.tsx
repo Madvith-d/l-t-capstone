@@ -5,7 +5,7 @@ import { api, Source } from "@/lib/api";
 
 type Message = { role: "user" | "assistant"; content: string; sources?: Source[] };
 
-export function ChatWorkspace({ conversationId, initialMessages = [], onConversation }: { conversationId?: string; initialMessages?: Message[]; onConversation: (id: string) => void }) {
+export function ChatWorkspace({ conversationId, initialMessages = [], demoQuestions = [], onConversation }: { conversationId?: string; initialMessages?: Message[]; demoQuestions?: string[]; onConversation: (id: string) => void }) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,10 +28,10 @@ export function ChatWorkspace({ conversationId, initialMessages = [], onConversa
   }
 
   return <section className="workspace" aria-labelledby="chat-heading">
-    <header className="workspace__head"><div><p className="context-label">Grounded assistant</p><h1 id="chat-heading">Ask the documents.</h1></div><span className="status"><i /> Evidence required</span></header>
+    <header className="workspace__head"><div><p className="context-label">Academic workspace</p><h1 id="chat-heading">Ask with evidence.</h1><p className="workspace__lede">Questions become grounded answers, study plans, or deliberate tool actions.</p></div><span className="status"><i /> Sources enforced</span></header>
     <div className="messages" aria-live="polite">
-      {messages.length === 0 && <div className="empty-state"><BookOpen aria-hidden="true"/><h2>Start with a college question</h2><p>Ask about regulations, examinations, attendance, or a syllabus. Answers include document references when evidence is available.</p><div className="prompt-row"><button onClick={() => setQuestion("What is the attendance requirement?")}>Attendance requirement</button><button onClick={() => setQuestion("What subjects are in semester 4?")}>Semester 4 subjects</button></div></div>}
-      {messages.map((message, index) => <article className={`message message--${message.role}`} key={`${message.role}-${index}`}><span className="message__role">{message.role === "user" ? "You" : "Northstar"}</span><p>{message.content}</p>{message.sources?.length ? <div className="sources"><h3>Sources</h3>{message.sources.map((source) => <div className="source" key={`${source.document_id}-${source.page}`}><BookOpen size={16}/><span><strong>{source.title}</strong><small>{source.page ? `Page ${source.page}` : "Page unavailable"}{source.section ? ` · ${source.section}` : ""}</small></span></div>)}</div> : null}</article>)}
+      {messages.length === 0 && <div className="empty-state"><BookOpen aria-hidden="true"/><h2>Start with a precise question</h2><p>Ask about regulations, examinations, attendance, or a syllabus. Every academic answer names its evidence.</p><div className="prompt-row">{(demoQuestions.length ? demoQuestions.slice(0, 4) : ["What is the attendance requirement?", "What subjects are in semester 4?"]).map((prompt) => <button key={prompt} onClick={() => setQuestion(prompt)}>{prompt}</button>)}</div></div>}
+      {messages.map((message, index) => <article className={`message message--${message.role}`} key={`${message.role}-${index}`}><span className="message__role">{message.role === "user" ? "You" : "academic-agent"}</span><p>{message.content}</p>{message.sources?.length ? <div className="sources"><h3>Sources</h3>{message.sources.map((source) => <div className="source" key={`${source.document_id}-${source.page}`}><BookOpen size={16}/><span><strong>{source.title}</strong><small>{source.page ? `Page ${source.page}` : "Page unavailable"}{source.section ? ` · ${source.section}` : ""}</small></span></div>)}</div> : null}</article>)}
       {loading && <div className="thinking"><LoaderCircle className="spinner" aria-hidden="true"/> Searching approved documents…</div>}
     </div>
     {error && <div className="form-error" role="alert"><p>{error}</p>{retryQuestion && <button type="button" onClick={() => { setQuestion(retryQuestion); setError(""); }}>Retry</button>}</div>}

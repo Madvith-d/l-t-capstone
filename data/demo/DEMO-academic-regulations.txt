@@ -1,7 +1,7 @@
 SYNTHETIC DEMONSTRATION DOCUMENT — NOT AN OFFICIAL COLLEGE POLICY
 
 Attendance:
-For the Northstar demonstration dataset only, students must maintain at least 85 percent attendance in each course to be eligible for the end-semester examination. A student below 85 percent attendance must meet the academic adviser and may be declared ineligible for that examination unless an approved exception applies.
+For the academic-agent demonstration dataset only, students must maintain at least 85 percent attendance in each course to be eligible for the end-semester examination. A student below 85 percent attendance must meet the academic adviser and may be declared ineligible for that examination unless an approved exception applies.
 
 Examination Guidelines:
 For this synthetic demonstration, students must bring their identity card and arrive thirty minutes before the examination. Prohibited electronic devices must remain outside the examination room.

@@ -6,7 +6,7 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
 export const metadata: Metadata = {
-  title: "Northstar Academic Assistant",
+  title: "academic-agent",
   description: "Grounded answers and practical study plans from college documents.",
 };
 

@@ -4,7 +4,8 @@
 
 1. Copy `.env.example` to `.env`.
 2. Start the already-installed host Ollama and verify `ollama list` contains `gemma4:e2b`.
-3. Keep `LLM_PROVIDER=ollama`, `LLM_MODEL=gemma4:e2b`, and `OLLAMA_BASE_URL=http://host.docker.internal:11435`, then run `docker compose up --build`.
+3. Choose `DEMO_MODE=true` for predefined synthetic answers/documents/plans, or `DEMO_MODE=false` for live RAG.
+4. Keep `LLM_PROVIDER=ollama`, `LLM_MODEL=gemma4:e2b`, and `OLLAMA_BASE_URL=http://host.docker.internal:11435`, then run `docker compose up --build`.
 4. Open `http://localhost:3000`; API docs are at `http://localhost:8000/docs`.
 5. Ingest the clearly labelled synthetic demo corpus:
 

@@ -3,7 +3,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { FileText, LoaderCircle, Upload } from "lucide-react";
 import { api, Document } from "@/lib/api";
 
-export function DocumentsWorkspace() {
+export function DocumentsWorkspace({ demoMode = false }: { demoMode?: boolean }) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -44,17 +44,17 @@ export function DocumentsWorkspace() {
 
   return <section className="workspace documents">
     <header className="workspace__head">
-      <div><p className="context-label">Knowledge base</p><h1>Approved source material.</h1></div>
+      <div><p className="context-label">Source register</p><h1>Academic source material.</h1><p className="workspace__lede">Inspect the documents that academic answers are allowed to cite.</p></div>
       <span className="status">{documents.length} documents</span>
     </header>
-    <form className="planner-form document-upload" onSubmit={upload}>
+    {!demoMode && <form className="planner-form document-upload" onSubmit={upload}>
       <label className="wide">PDF or text document<input name="file" type="file" accept=".pdf,.txt,application/pdf,text/plain" required /></label>
       <label>Title<input name="title" placeholder="Academic Regulations 2026" /></label>
       <label>Category<input name="category" placeholder="Regulations" /></label>
       <label>Department<input name="department" placeholder="Computer Science" /></label>
       <label>Academic year<input name="academic_year" placeholder="2025–26" /></label>
       <button className="primary" disabled={uploading}>{uploading ? <><LoaderCircle className="spinner" /> Ingesting…</> : <><Upload size={17} /> Add document</>}</button>
-    </form>
+    </form>}
     {loading && <div className="thinking"><LoaderCircle className="spinner" /> Loading documents…</div>}
     {error && <p className="form-error" role="alert">{error}</p>}
     {!loading && !error && documents.length === 0 && <div className="empty-state">

@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_user_id
+from app.core.config import get_settings
 from app.db.session import get_db
 from app.planner.engine import PlanValidationError
 from app.schemas.api import PlanCreate, PlanOut, PlanPatch
+from app.services.demo import demo_plan_requests, ensure_demo_plans
 from app.services.plans import create_plan as create_plan_service
 from app.services.plans import list_plans, load_plan, modify_plan
 
@@ -23,6 +25,11 @@ def get_plans(
     user_id: str = Depends(get_user_id),
     db: Session = Depends(get_db),
 ):
+    if get_settings().demo_mode:
+        ensure_demo_plans(db, user_id)
+        db.commit()
+        demo_titles = {request.title for request in demo_plan_requests()}
+        return [plan for plan in list_plans(db, user_id) if plan.title in demo_titles]
     return list_plans(db, user_id)
 
 

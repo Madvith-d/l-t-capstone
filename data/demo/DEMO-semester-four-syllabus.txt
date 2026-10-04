@@ -1,7 +1,7 @@
 SYNTHETIC DEMONSTRATION DOCUMENT — NOT AN OFFICIAL COLLEGE SYLLABUS
 
 Semester 4 Subjects:
-The Northstar demonstration semester 4 contains Database Management Systems (DBMS), Operating Systems, Computer Networks, and Design and Analysis of Algorithms.
+The academic-agent demonstration semester 4 contains Database Management Systems (DBMS), Operating Systems, Computer Networks, and Design and Analysis of Algorithms.
 
 Practical Courses:
 DBMS includes a SQL laboratory practical. Operating Systems includes a systems programming laboratory practical. Computer Networks includes a networking laboratory practical. Design and Analysis of Algorithms is assessed through theory exercises in this demonstration dataset and has no separate practical examination.

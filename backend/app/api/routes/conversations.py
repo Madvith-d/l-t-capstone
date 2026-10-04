@@ -3,10 +3,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import ensure_user, get_user_id
+from app.core.config import get_settings
 from app.db.session import get_db
 from app.models import Conversation
 from app.schemas.api import ConversationCreate, ConversationOut, ConversationSummary
 from app.services.conversations import list_conversations
+from app.services.demo import ensure_demo_conversations
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
@@ -32,6 +34,14 @@ def get_conversations(
     user_id: str = Depends(get_user_id),
     db: Session = Depends(get_db),
 ):
+    if get_settings().demo_mode:
+        ensure_demo_conversations(db, user_id)
+        db.commit()
+        return [
+            conversation
+            for conversation in list_conversations(db, user_id)
+            if (conversation.summary or "").startswith("demo:seed:v3:")
+        ]
     return list_conversations(db, user_id)
 
 

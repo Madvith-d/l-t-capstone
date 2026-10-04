@@ -5,11 +5,13 @@ from langgraph.graph import END, START, StateGraph
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import ensure_user
+from app.core.config import get_settings
 from app.models import StudyPlan, StudySession
 from app.planner.engine import PlanValidationError, generate_sessions, validate_sessions
 from app.planner.modification import apply_modification, parse_modification
 from app.schemas.api import Intent, PlanCreate
 from app.services.classification import classify_intent
+from app.services.demo import demo_answer, demo_plan_request
 from app.services.plans import (
     latest_plan,
     load_plan,
@@ -56,6 +58,7 @@ class AssistantState(TypedDict, total=False):
     tool_calls: list[dict]
     tool_results: list[dict]
     subqueries: list[str]
+    demo_answer: str | None
     response: str
     sources: list[dict]
     filters: dict[str, str]
@@ -84,6 +87,7 @@ class AssistantWorkflow:
         builder = StateGraph(AssistantState)
         nodes = {
             "analyze_query": self.analyze,
+            "demo_response": self.demo_response,
             "rewrite_query": self.rewrite,
             "retrieve_information": self.retrieve,
             "check_evidence": self.check_evidence,
@@ -117,6 +121,7 @@ class AssistantWorkflow:
             "analyze_query",
             self.route,
             {
+                "demo": "demo_response",
                 "academic": "rewrite_query",
                 "multi_step": "decompose_request",
                 "planner_create": "extract_plan_request",
@@ -126,6 +131,7 @@ class AssistantWorkflow:
                 "general": "general_response",
             },
         )
+        builder.add_edge("demo_response", "validate_citations")
         builder.add_edge("rewrite_query", "retrieve_information")
         builder.add_edge("retrieve_information", "check_evidence")
         builder.add_conditional_edges(
@@ -171,10 +177,28 @@ class AssistantWorkflow:
     def analyze(self, state: AssistantState) -> dict:
         has_plan = bool(latest_plan(self.db, state["user_id"]))
         intent = classify_intent(state["question"], has_plan)
-        return {"intent": intent.value, "graph_route": ["analyze_query"]}
+        result: dict = {"intent": intent.value, "graph_route": ["analyze_query"]}
+        if get_settings().demo_mode and intent in (
+            Intent.ACADEMIC_QA,
+            Intent.DOCUMENT_SEARCH,
+            Intent.MULTI_STEP,
+            Intent.UNKNOWN,
+        ):
+            answer, sources, confidence = demo_answer(
+                state["question"], state.get("conversation_history")
+            )
+            result.update(
+                demo_answer=answer,
+                sources=sources,
+                confidence=confidence,
+                evidence_sufficient=bool(sources),
+            )
+        return result
 
     def route(self, state: AssistantState) -> str:
         intent = Intent(state["intent"])
+        if state.get("demo_answer") is not None:
+            return "demo"
         if intent in (Intent.ACADEMIC_QA, Intent.DOCUMENT_SEARCH, Intent.UNKNOWN):
             return "academic"
         if intent == Intent.MULTI_STEP:
@@ -188,6 +212,12 @@ class AssistantWorkflow:
         if intent == Intent.STUDY_PLAN_MODIFICATION:
             return "planner_modify"
         return "general"
+
+    def demo_response(self, state: AssistantState) -> dict:
+        return {
+            "response": state["demo_answer"],
+            "graph_route": self._path(state, "demo_response"),
+        }
 
     def rewrite(self, state: AssistantState) -> dict:
         rewritten = rewrite_query(state["question"], state.get("conversation_history"))
@@ -265,7 +295,9 @@ class AssistantWorkflow:
     def extract_plan(self, state: AssistantState) -> dict:
         try:
             payload = (
-                PlanCreate.model_validate(state["plan_request"])
+                demo_plan_request()
+                if get_settings().demo_mode
+                else PlanCreate.model_validate(state["plan_request"])
                 if state.get("plan_request")
                 else parse_chat_plan_request(state["question"], state["user_id"])
             )

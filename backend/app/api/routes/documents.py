@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.db.session import get_db
 from app.models import Document
 from app.schemas.api import DocumentOut
+from app.services.demo import demo_documents
 from app.services.ingestion import SUPPORTED_EXTENSIONS, IngestionService
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -16,6 +17,8 @@ router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 @router.get("", response_model=list[DocumentOut])
 def list_documents(db: Session = Depends(get_db)):
+    if get_settings().demo_mode:
+        return demo_documents()
     return list(db.scalars(select(Document).order_by(Document.created_at.desc())).all())
 
 
@@ -28,6 +31,14 @@ async def ingest_document(
     academic_year: str | None = Form(None),
     db: Session = Depends(get_db),
 ):
+    if get_settings().demo_mode:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "demo_mode_read_only",
+                "message": "Document uploads are disabled in demo mode. Set DEMO_MODE=false to use approved documents.",
+            },
+        )
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in SUPPORTED_EXTENSIONS:
         raise HTTPException(status_code=415, detail="Only PDF and TXT documents are supported")

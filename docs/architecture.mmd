@@ -1,8 +1,3 @@
-# academic-agent Architecture
-
-The diagram below describes the production application path. The standalone Mermaid source is available at [`architecture.mmd`](architecture.mmd).
-
-```mermaid
 flowchart LR
     Student[Student] --> Browser[Next.js Web Application]
 
@@ -31,6 +26,7 @@ flowchart LR
             Analyze --> Multi[Decompose Multi-step Request]
             Analyze --> PlanFlow[Create or Modify Plan]
             Analyze --> ToolFlow[Select Registered Tool]
+
             Rewrite --> Retrieve[Retrieve Evidence]
             Multi --> Retrieve
             Retrieve --> Evidence{Evidence Sufficient?}
@@ -48,6 +44,7 @@ flowchart LR
         Extract --> Clean[Clean and Chunk]
         Clean --> Embed[FastEmbed BGE Embeddings]
         Embed --> VectorStore[(pgvector Document Chunks)]
+
         Retrieve --> QueryEmbed[Query Embedding]
         QueryEmbed --> VectorStore
         VectorStore --> Retrieve
@@ -56,6 +53,7 @@ flowchart LR
         PlanFlow --> Planner[Deterministic Planner and Validator]
         ToolFlow --> Calculator[Safe AST Calculator]
         ToolFlow --> Calendar[Persistent Calendar Provider]
+
         Conversations --> Database[(PostgreSQL)]
         PlanAPI --> Planner
         Planner --> Database
@@ -66,46 +64,3 @@ flowchart LR
     LLM --> OllamaBridge[Host Ollama Bridge]
     Finalize --> API
     API --> Browser
-```
-
-## Component responsibilities
-
-- **Next.js frontend:** chat, conversation selection, planning, document management, loading/error states, and source rendering.
-- **FastAPI:** request validation, identity scoping, structured errors, and API contracts.
-- **LangGraph:** explicit bounded routing for academic, multi-step, planner, calculator, calendar, and general requests.
-- **RAG services:** query rewriting, BGE query embeddings, pgvector retrieval, evidence checks, context construction, grounded generation, and citation validation.
-- **Ollama:** runs `gemma4:e2b` on the host; the backend container connects through the local TCP bridge.
-- **Planner:** deterministically generates, validates, modifies, and persists study sessions.
-- **Tools:** restricted AST calculator and owner-scoped calendar provider.
-- **PostgreSQL:** users, conversations, messages, plans, sessions, calendar events, documents, metadata, and pgvector embeddings.
-
-## Primary data flows
-
-### Academic question
-
-```text
-Question → intent analysis → bounded rewrite/decomposition → BGE query embedding
-→ pgvector search → evidence check → gemma4:e2b → citation validation
-→ structured answer and sources
-```
-
-### Document ingestion
-
-```text
-PDF/TXT → validation → extraction → cleaning → overlapping chunks
-→ BGE embeddings → PostgreSQL/pgvector
-```
-
-### Study planning
-
-```text
-Plan request → structured extraction → deterministic generation → validation
-→ owner-scoped persistence → structured plan response
-```
-
-### Plan modification
-
-```text
-Instruction → owner-scoped plan load → structured modification command
-→ deterministic mutation → validation → in-place session updates
-```

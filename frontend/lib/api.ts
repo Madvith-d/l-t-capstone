@@ -9,6 +9,7 @@ export type Plan = { id: string; title: string; exam_date: string; available_hou
 export type Document = { id: string; title: string; category?: string; department?: string; academic_year?: string; source: string; status: string };
 export type Message = { id: string; role: string; content: string; sources: Source[] };
 export type Conversation = { id: string; title: string; updated_at: string; messages?: Message[] };
+export type DemoStatus = { enabled: boolean; label: string; questions: string[] };
 
 export class ApiError extends Error {
   constructor(message: string, public status = 0, public code = "request_failed") { super(message); }
@@ -16,12 +17,10 @@ export class ApiError extends Error {
 
 function userId(): string {
   if (typeof window === "undefined") return "server-render-session";
-  const key = "northstar-user-id";
-  let value = window.localStorage.getItem(key);
-  if (!value) {
-    value = crypto.randomUUID();
-    window.localStorage.setItem(key, value);
-  }
+  const key = "academic-agent-user-id";
+  let value = window.localStorage.getItem(key) ?? window.localStorage.getItem("northstar-user-id");
+  if (!value) value = crypto.randomUUID();
+  window.localStorage.setItem(key, value);
   return value;
 }
 
@@ -52,6 +51,13 @@ function parseDocument(value: unknown): Document {
     throw new ApiError("Invalid document response from the server.", 502, "invalid_response");
   }
   return value as unknown as Document;
+}
+
+function parseDemoStatus(value: unknown): DemoStatus {
+  if (!object(value) || typeof value.enabled !== "boolean" || typeof value.label !== "string" || !Array.isArray(value.questions)) {
+    throw new ApiError("Invalid demo-mode response from the server.", 502, "invalid_response");
+  }
+  return value as unknown as DemoStatus;
 }
 
 function parseConversation(value: unknown): Conversation {
@@ -93,6 +99,7 @@ async function request(path: string, init?: RequestInit): Promise<unknown> {
 }
 
 export const api = {
+  demoStatus: async () => parseDemoStatus(await request("/api/demo")),
   chat: async (question: string, conversationId?: string, planId?: string) => parseChat(await request("/api/chat", { method: "POST", body: JSON.stringify({ question, conversation_id: conversationId, plan_id: planId }) })),
   conversations: async () => { const value = await request("/api/conversations"); assertArray(value, "conversation list"); return value.map(parseConversation); },
   conversation: async (id: string) => parseConversation(await request(`/api/conversations/${id}`)),

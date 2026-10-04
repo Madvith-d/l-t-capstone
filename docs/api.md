@@ -1,6 +1,7 @@
 # API
 
 - `GET /health`, `GET /health/ready`
+- `GET /api/demo` — authoritative demo-mode status and predefined sample questions.
 - `POST /api/chat` — answer, intent, confidence, structured sources, tool results, and graph route.
 - `POST /api/conversations`
 - `GET /api/conversations` — lightweight owner-scoped metadata list.

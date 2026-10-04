@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import chat, conversations, documents, health, plans
+from app.api.routes import chat, conversations, demo, documents, health, plans
 from app.core.config import get_settings
 from app.core.logging import RequestContextMiddleware, configure_logging
 from app.services.embeddings import EmbeddingError
@@ -23,7 +23,14 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
-for router in (health.router, chat.router, conversations.router, plans.router, documents.router):
+for router in (
+    health.router,
+    demo.router,
+    chat.router,
+    conversations.router,
+    plans.router,
+    documents.router,
+):
     app.include_router(router)
 
 

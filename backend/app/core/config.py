@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 
     app_env: str = "development"
+    demo_mode: bool = False
     log_level: str = "INFO"
     backend_cors_origins: list[str] | str = ["http://localhost:3000"]
     database_url: str = "sqlite:///./academic_assistant.db"

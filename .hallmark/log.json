@@ -1,1 +1,20 @@
-[{"date":"2026-06-12","macrostructure":"Workbench","theme":"Midnight","enrichment":"none","nav":"N13","footer":"Ft2","brief":"Northstar academic assistant application"}]
+[
+  {
+    "date": "2026-10-04",
+    "macrostructure": "Split Studio",
+    "theme": "Cobalt",
+    "enrichment": "none",
+    "nav": "N9 adapted for application navigation",
+    "footer": "Ft5",
+    "brief": "academic-agent demo and live academic workspace"
+  },
+  {
+    "date": "2026-06-12",
+    "macrostructure": "Workbench",
+    "theme": "Midnight",
+    "enrichment": "none",
+    "nav": "N13",
+    "footer": "Ft2",
+    "brief": "Northstar academic assistant application"
+  }
+]
