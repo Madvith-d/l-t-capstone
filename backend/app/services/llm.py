@@ -3,8 +3,9 @@ import re
 import httpx
 
 from app.core.config import Settings, get_settings
+from app.services.prompts import UNKNOWN_RESPONSE, render_academic_prompt
 
-SYSTEM_PROMPT = """You are a college academic assistant. Answer only from the supplied context for college-specific facts. If context is insufficient, say exactly: I couldn't find information about this in the available college documents. Preserve source markers like [1]. Be clear and concise."""
+SYSTEM_PROMPT = f"""You are a college academic assistant. Answer only from the supplied context for college-specific facts. If context is insufficient, say exactly: {UNKNOWN_RESPONSE} Preserve source markers like [1]. Be clear and concise."""
 
 
 class LLMError(RuntimeError):
@@ -24,7 +25,7 @@ class LocalLLMService(LLMService):
 
     def answer(self, question: str, context: str, history: list[dict] | None = None) -> str:
         if not context.strip():
-            return "I couldn't find information about this in the available college documents."
+            return UNKNOWN_RESPONSE
         terms = set(re.findall(r"[a-z]{3,}", question.lower()))
         evidence = re.sub(r"Source \[\d+\] — [^\n]+:\n", "", context)
         sentences = re.split(r"(?<=[.!?])\s+", evidence)
@@ -36,7 +37,7 @@ class LocalLLMService(LLMService):
         chosen = [sentence.strip() for sentence in ranked[:3] if sentence.strip()]
         return (
             " ".join(chosen)
-            or "I couldn't find information about this in the available college documents."
+            or UNKNOWN_RESPONSE
         )
 
     def baseline(self, question: str) -> str:
@@ -76,7 +77,7 @@ class GeminiLLMService(LLMService):
             raise LLMError("Gemini generation request failed") from exc
 
     def answer(self, question: str, context: str, history: list[dict] | None = None) -> str:
-        return self._call(f"Context:\n{context}\n\nQuestion: {question}", history)
+        return self._call(render_academic_prompt(question, context), history)
 
     def baseline(self, question: str) -> str:
         return self._call(question)

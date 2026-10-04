@@ -25,13 +25,13 @@ Important variables: `DATABASE_URL`, `GEMINI_API_KEY`, `LLM_PROVIDER`, `LLM_MODE
 
 ## Documents
 
-Place approved PDF/TXT files in `data/raw`, then:
+Upload approved PDF/TXT files from the **Sources** screen, or place them in `data/raw` and run:
 
 ```bash
 docker compose exec backend python -m scripts.ingest data/raw/academic-regulations.pdf --category regulations
 ```
 
-Content hashes make repeated ingestion idempotent. PDF chunks retain page numbers and source metadata. See [RAG documentation](docs/rag.md).
+Each document is cleaned, split into overlapping chunks, embedded, and stored in pgvector. Content hashes make repeated ingestion idempotent, and PDF chunks retain page numbers and source metadata. See [RAG documentation](docs/rag.md).
 
 ## Development and tests
 

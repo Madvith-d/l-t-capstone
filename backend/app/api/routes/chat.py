@@ -21,4 +21,5 @@ def send_message(request: ChatRequest, db: Session = Depends(get_db)) -> ChatRes
         sources=result.get("sources", []),
         confidence=result.get("confidence", 0),
         tool_results=result.get("tool_results", []),
+        graph_route=result.get("graph_route", []),
     )

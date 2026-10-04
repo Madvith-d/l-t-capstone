@@ -40,6 +40,7 @@ class ChatResponse(BaseModel):
     sources: list[Source] = Field(default_factory=list)
     confidence: float = 0
     tool_results: list[dict] = Field(default_factory=list)
+    graph_route: list[str] = Field(default_factory=list)
 
 
 class MessageOut(BaseModel):
